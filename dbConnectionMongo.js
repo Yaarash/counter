@@ -1,5 +1,6 @@
 const MongoClient = require('mongodb').MongoClient;
-const URI = "mongodb+srv://root:141018@cluster0-ajjwb.mongodb.net/?retryWrites=true&w=majority";
+require('dotenv').config();
+const URI = process.env.URI;
 
 let _db;
 

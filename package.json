@@ -12,6 +12,7 @@
   "author": "Yaara Shoham",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^8.2.0",
     "mongodb": "^3.4.1"
   }
 }

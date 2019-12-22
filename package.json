@@ -1,0 +1,17 @@
+{
+  "name": "lemonade",
+  "version": "1.0.0",
+  "description": "word counter",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "clear": "node clear.js",
+    "count": "node getCount.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Yaara Shoham",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^3.4.1"
+  }
+}

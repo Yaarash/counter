@@ -10,8 +10,7 @@ const { connectToDb, saveToDb } = require('./dbConnectionMongo');
 const getSourceType = (source) => {
     if (url.parse(source).hostname != null) {
         return 'url';
-    } else
-    if (FILE_PATH_REGEX.test(source)) {
+    } else if (FILE_PATH_REGEX.test(source)) {
         return 'file';
     }
 
@@ -19,8 +18,9 @@ const getSourceType = (source) => {
 }
 
 const splitByWords = (text) => {
+    //console.log(text);
     // clean text from non-alpha numeric characters
-    const alphaNumericText = text.replace(/[^0-9a-z ]/gi, '');
+    const alphaNumericText = text.replace(/[^0-9a-zA-Z ]/gi, ' ');
     // split string by spaces (including spaces, tabs, and newlines)
     const wordsArray = alphaNumericText.toLowerCase().split(/\s+/);
     return wordsArray;
@@ -32,10 +32,10 @@ const createWordMap = (wordsArray) => {
     // wordsMap = { 'hi': 2, 'my': 3, ...}
     let wordsMap = {};
     wordsArray.forEach(function (key) {
-        if (wordsMap.hasOwnProperty(key)) {
-            wordsMap[key]++;
+        if (wordsMap.hasOwnProperty(key.trim())) {
+            wordsMap[key.trim()]++;
         } else {
-            wordsMap[key] = 1;
+            wordsMap[key.trim()] = 1;
         }
     });
 
@@ -48,7 +48,6 @@ const analyzeString = async (input) => {
 
     try {
         await saveToDb(wordsMap);
-        process.exit(0);
     } catch (err) {
         console.log("Error found within analyzeString: " + err);
         process.exit(1);
@@ -56,13 +55,30 @@ const analyzeString = async (input) => {
 }
 
 const readFromFile = (filePath) => {
-    let myInterface = readline.createInterface({
+    const stream = readline.createInterface({
         input: fs.createReadStream(filePath)
     });
+    let lines = '';
+    let count = 0;
+    stream.on('line', async line => {
+        lines = lines + ' ' + line;
+        count = count + 1;
+        if (count >= 8000) {
+            stream.pause();
+        }
 
-    myInterface.on('line', function (line) {
-        console.log(line);
-        analyzeString(line);
+    });
+    stream.on('pause', async () => {
+        console.log('Analyzing ', count, ' lines')
+        count = 0;
+        await analyzeString(lines);
+        lines = '';
+        stream.resume();
+    });
+    stream.on('close', async () => {
+        //last lines
+        await analyzeString(lines);
+        process.exit(0);
     });
 }
 
@@ -105,7 +121,7 @@ const rl = readline.createInterface({
 });
 
 connectToDb((err) => {
-    if (err){
+    if (err) {
         console.log(err);
         process.exit(1);
     }
@@ -117,8 +133,8 @@ connectToDb((err) => {
 
         console.log(`Thank you for your input: ${source}`);
         rl.close();
-    const sourceType = getSourceType(source);
-    console.log("Type of source is: ", sourceType);
-    getText(sourceType, source);
+        const sourceType = getSourceType(source);
+        console.log("Type of source is: ", sourceType);
+        getText(sourceType, source);
     });
 });

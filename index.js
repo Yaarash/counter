@@ -2,10 +2,11 @@ const readline = require('readline');
 const http = require('http');
 const url = require("url");
 const fs = require('fs');
+const es = require('event-stream');
 
 const FILE_PATH_REGEX = RegExp('^\.\/([A-z0-9-_+]+\/)*([A-z0-9]+\.(txt))');
+const MAX_MAP_SIZE = 300;
 const { connectToDb, saveToDb } = require('./dbConnectionMongo');
-
 
 const getSourceType = (source) => {
     if (url.parse(source).hostname != null) {
@@ -27,10 +28,7 @@ const splitByWords = (text) => {
 }
 
 // create map for word counts
-
 const createWordMap = (wordsArray) => {
-    // wordsMap = { 'hi': 2, 'my': 3, ...}
-    let wordsMap = {};
     wordsArray.forEach(function (key) {
         if (wordsMap.hasOwnProperty(key.trim())) {
             wordsMap[key.trim()]++;
@@ -38,48 +36,79 @@ const createWordMap = (wordsArray) => {
             wordsMap[key.trim()] = 1;
         }
     });
-
-    return wordsMap;
 }
 
-const analyzeString = async (input) => {
+const analyzeString = async (input, isLast) => {
+    let chunk = 0;
     let wordsArray = splitByWords(input);
-    let wordsMap = createWordMap(wordsArray);
-
+    createWordMap(wordsArray);
+    console.log("WordsMap size is: ", Object.keys(wordsMap).length);
+    if (Object.keys(wordsMap).length < MAX_MAP_SIZE && !isLast) return;
     try {
         await saveToDb(wordsMap);
+        //clear map after saving to db
+        wordsMap = {};
+        console.log("Saved chunk to db: ", chunk++);
     } catch (err) {
         console.log("Error found within analyzeString: " + err);
         process.exit(1);
     }
+
 }
 
 const readFromFile = (filePath) => {
-    const stream = readline.createInterface({
-        input: fs.createReadStream(filePath)
-    });
-    let lines = '';
-    let count = 0;
-    stream.on('line', async line => {
-        lines = lines + ' ' + line;
-        count = count + 1;
-        if (count >= 8000) {
-            stream.pause();
-        }
 
-    });
-    stream.on('pause', async () => {
-        console.log('Analyzing ', count, ' lines')
-        count = 0;
-        await analyzeString(lines);
-        lines = '';
-        stream.resume();
-    });
-    stream.on('close', async () => {
-        //last lines
-        await analyzeString(lines);
-        process.exit(0);
-    });
+    fs.createReadStream(filePath)
+        .pipe(es.split())
+        .pipe(
+        es.map(async function(line, callback){
+            try{
+                await analyzeString(line);
+
+                callback(null, line);
+
+            } catch (err) {
+                console.log("Found error in readFromFile: ", err);
+                callback(error);
+            }
+
+        })
+        .on('error', function(err){
+                console.log("Found error in readFromFile: ", err);
+            })
+        .on('end', async function(){
+                //last lines
+                await analyzeString(lines, true);
+                console.log("Finished analyzing input");
+                process.exit(0);
+            })
+    )
+
+    /*  const stream = readline.createInterface({
+     input: fs.createReadStream(filePath)
+     });
+     let lines = '';
+     let count = 0;
+     stream.on('line', async line => {
+     lines = lines + ' ' + line;
+     count = count + 1;
+     if (count >= 8000) {
+     stream.pause();
+     }
+
+     });
+     stream.on('pause', async () => {
+     console.log('Analyzing ', count, ' lines')
+     count = 0;
+     await analyzeString(lines);
+     lines = '';
+     stream.resume();
+     });
+     stream.on('close', async () => {
+     //last lines
+     await analyzeString(lines);
+     process.exit(0);
+     });*/
 }
 
 const readFromUrl = (inputUrl) => {

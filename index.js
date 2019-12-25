@@ -2,8 +2,8 @@ const readline = require("readline");
 const url = require("url");
 
 const FILE_PATH_REGEX = RegExp("^./([A-z0-9-_+]+/)*([A-z0-9]+.(txt))");
-const {connectToDb} = require("./dbConnectionMongo");
-const {analyzeString, readFromFile, readFromUrl} = require("./readers");
+const { connectToDb } = require("./dbConnectionMongo");
+const { analyzeString, readFromFile, readFromUrl } = require("./readers");
 
 const getSourceType = source => {
     if (url.parse(source).hostname != null) {

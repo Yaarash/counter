@@ -1,7 +1,6 @@
 const readline = require('readline');
 
-const { connectToDb, saveToDb, getDb } = require('./dbConnectionMongo');
-
+const { connectToDb, getDb } = require('./dbConnectionMongo');
 
 const getWordCount = async (word) => {
     try {
@@ -9,7 +8,6 @@ const getWordCount = async (word) => {
         const result = await db.collection('words').findOne({_id: word});
         if (!result) return 0;
         return result.count;
-
     } catch (err) {
         console.log("Error found within getWordCount() " + err);
         process.exit(1);
@@ -35,7 +33,7 @@ const rl = readline.createInterface({
 });
 
 connectToDb((err) => {
-    if (err){
+    if (err) {
         console.log(err);
         process.exit(1);
     }

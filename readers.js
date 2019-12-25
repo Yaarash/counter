@@ -1,6 +1,5 @@
 const fs = require("fs");
 const stream = require("stream");
-const { Writable } = require("stream");
 const http = require("http");
 
 const {saveToDb} = require("./dbConnectionMongo");
@@ -44,25 +43,24 @@ const analyzeString = async input => {
 const readFromFile = async filePath => {
     let count = 0;
 
-    let instream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    let instream = fs.createReadStream(filePath, {encoding: "utf-8"});
     const writableStream = new stream.Writable();
 
     writableStream._write = async (chunk, encoding, next) => {
         await analyzeString(chunk.toString())
-        console.log(count++);
+        console.log("processing chunk number ", ++count);
         next();
     };
+
 
     const split = new stream.Transform({
         transform(chunk, encoding, next) {
             //current line so far represented by this.soFar
-            // toString() converts buffers to strings
             let lines = (
                 (this.soFar != null ? this.soFar : "") + chunk.toString()
             ).match(/(?:^.*$\r?\n?){1,1500}/gm);
             //split at the newline character
             const cleanLines = lines.map(line => line.replace(/[\n\r]/g, " "));
-
 
             // last element of the array is stored in this.soFar
             this.soFar = cleanLines.pop();
@@ -73,30 +71,29 @@ const readFromFile = async filePath => {
             // finished operations on this chunk.
             next();
         },
-
-        // if file does'nt end with newline, flush will output
-        // remaining this.soFar data from the last line
+        // output remaining this.soFar data from the last line
         flush(done) {
             this.push(this.soFar != null ? this.soFar : "");
-
             // operations are done.
             done();
         }
     });
 
+    writableStream.on('finish', () => {
+        console.log('All writes are now complete.');
+        process.exit(0)
+    });
     instream.pipe(split).pipe(writableStream);
-
-    writableStream.onen
 };
 
 const readFromUrl = inputUrl => {
     const fileName = url.parse(inputUrl).hostname + ".txt";
     const file = fs.createWriteStream(fileName);
 
-    http.get(inputUrl, function(response) {
+    http.get(inputUrl, function (response) {
         response.pipe(file);
     });
-    file.on("finish", function() {
+    file.on("finish", function () {
         const filePath = "./" + fileName;
         console.log("File Path is: ", filePath);
         readFromFile(filePath);

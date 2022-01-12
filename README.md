@@ -1,6 +1,6 @@
 # word counter
 
-Welcome to the word counter!
+Welcome to my smart word counter!
 
 This project entails 3 different programs to help you count words:
 1. start -  extracts words from different input types (String, text file, url)
